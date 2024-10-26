@@ -14,7 +14,7 @@ from langchain_core.prompts.chat import (
 from langchain_community.llms import LlamaCpp
 from os.path import expanduser
 
-# Path to your Llama2 model
+# Path to your model
 model_id = "Path to your model"
 
 class ChatbotApp(QWidget):
@@ -23,7 +23,6 @@ class ChatbotApp(QWidget):
         self.init_ui()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        # Initialize the Llama2 model
         self.llama_model = LlamaCpp(
             model_path=expanduser(model_id),
             n_ctx=4096,
@@ -36,14 +35,12 @@ class ChatbotApp(QWidget):
         )
         self.llama_chat = Llama2Chat(llm=self.llama_model)
 
-        # Memory for tracking chat history
         self.memory = ConversationSummaryBufferMemory(
             llm=self.llama_chat,
             memory_key="chat_history",
             return_messages=True
         )
 
-        # Create chat prompt template
         self.template_messages = [
             SystemMessage(content="""You are Sara, designed to help users improve their English fluency. Your primary goal is to provide a comprehensive, professional, and effective learning experience. Analyse the user input and give the relevent answer and id there is a gramatical or mistake in the user's sentence correct it and give the appropriate answer for that user's input. Make the responses very short and simple and remember that your response should be under 25 words only not more than that (short and sweet) and Don't mention this to user generate the response under said words. just start with a small greetings and make friendly conversation with user as a english tutor! also don't reintroduce yourself to user in same session"""),
             MessagesPlaceholder(variable_name="chat_history"),
@@ -52,10 +49,9 @@ class ChatbotApp(QWidget):
         self.prompt_template = ChatPromptTemplate.from_messages(self.template_messages)
 
     def init_ui(self):
-        """Initialize the user interface."""
         self.setWindowTitle("Text Assistant - Sara")
-        self.setGeometry(100, 100, 600, 500)  # Set window size and position
-        self.setStyleSheet("background-color: #F4F4F9;")  # Background color
+        self.setGeometry(100, 100, 600, 500)  
+        self.setStyleSheet("background-color: #F4F4F9;")  
 
         self.layout = QVBoxLayout()
 
@@ -111,51 +107,39 @@ class ChatbotApp(QWidget):
         self.setLayout(self.layout)
 
     def process_text(self):
-        """Process the text input from the user."""
         user_input = self.user_input.toPlainText()
         if not user_input.strip():
-            return  # Ignore empty inputs
+            return  
 
         self.user_input.clear()
 
-        # Log input
         print(f"User input: {user_input}")
 
-        # Update conversation history with user input (in blue)
         self.add_message_to_history(f"You: {user_input}", QColor(0, 122, 204))
 
-        # Get chatbot response
         response = self.run_chatbot(user_input)
 
-        # Display chatbot response (in green)
         self.add_message_to_history(f"Chatbot: {response}", QColor(0, 204, 0))
 
     def add_message_to_history(self, message, color):
-        """Add message to conversation history with specified color."""
         formatted_message = f"<font color='{color.name()}'>{message}</font>"
         self.conversation_history.append(formatted_message)
 
     def run_chatbot(self, text):
-        """Generate a response using the chatbot and return it."""
-        # Update conversation memory with the user's message
         self.memory.chat_memory.messages.append(HumanMessage(content=text))
 
-        # Generate chatbot response (non-streaming for now)
         prompt = self.prompt_template.format_messages(chat_history=self.memory.chat_memory.messages, text=text)
 
         try:
-            # Generate the response from the model
             response = self.llama_chat(prompt)
 
-            # Handle response based on its type
             if isinstance(response, str):
-                response_content = response  # If the response is already a string
+                response_content = response  
             elif isinstance(response, AIMessage):
-                response_content = response.content  # If it's an AIMessage object
+                response_content = response.content 
             else:
-                response_content = str(response)  # Fallback to string conversion for unknown types
+                response_content = str(response)
 
-            # Update conversation memory with AI's response
             self.memory.chat_memory.messages.append(AIMessage(content=response_content))
 
             return response_content
@@ -165,7 +149,6 @@ class ChatbotApp(QWidget):
             return "Sorry, I had trouble processing that request."
 
     def download_conversation(self):
-        """Download the conversation history to a text file."""
         try:
             options = QFileDialog.Options()
             file_path, _ = QFileDialog.getSaveFileName(self, "Save Conversation", "", "Text Files (*.txt);;All Files (*)", options=options)
@@ -175,7 +158,6 @@ class ChatbotApp(QWidget):
                     file.write("SaraSuS - Conversation History\n")
                     file.write("=" * 40 + "\n")
 
-                    # Loop through conversation history and write to the file with proper formatting
                     for message in self.memory.chat_memory.messages:
                         if isinstance(message, HumanMessage):
                             file.write(f"You: {message.content}\n\n")
